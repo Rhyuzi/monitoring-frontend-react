@@ -19,7 +19,7 @@ const Report: React.FC = () => {
   const [district, setDistrict] = useState('');
   const [subdistrict, setSubdistrict] = useState('');
   const [distributionDate, setDistributionDate] = useState('');
-  const [attachment, setAttachment] = useState(null);
+  const [attachment, setAttachment] = useState<File | null>(null);
   const [note, setNote] = useState('');
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
