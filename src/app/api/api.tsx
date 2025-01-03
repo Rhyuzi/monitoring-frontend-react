@@ -1,4 +1,5 @@
-// src/api/api.ts
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import axios from 'axios';
 
 // Base URL untuk API
