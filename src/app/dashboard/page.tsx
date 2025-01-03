@@ -21,7 +21,7 @@ const Dashboard: React.FC = () => {
   }, []);
   return (
     <DashboardLayout>
-      <h1 className="text-2xl font-semibold">Welcome to the Dashboard</h1>
+      <h1 className="text-2xl font-semibold text-gray-600">Welcome to the Dashboard</h1>
       <div className="grid grid-cols-3 gap-4 mt-6 text-gray-600">
         <div className="bg-white p-4 rounded-lg shadow-lg">
           <h2 className="text-xl font-medium">Total Laporan</h2>
