@@ -22,7 +22,11 @@ const Login: React.FC = () => {
     console.log('Logging in with', result);
     if (result.success) {
       localStorage.setItem('users', JSON.stringify(result.data.user))
-      router.push('/dashboard');
+      if (result.data.user.role === 1) {
+        router.push('/dashboard');
+      }else if (result.data.user.role === 0){
+        router.push('/report');
+      }
     }
     // Assume login is successful (you would replace this with real logic)
     setError('');

@@ -5,13 +5,67 @@ import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import AddIcon from '@mui/icons-material/Add';
 import DescriptionIcon from '@mui/icons-material/Description';
-import { fetchData, addDataReport, updateDataReport } from '../api/api';
+import { fetchData, addDataReport, updateDataReport, deleteDataReport, updateStatusReport, eksportPDF, eksportEXCEL } from '../api/api';
 import { toast } from 'react-toastify';
 import EditDialog from '../components/EditDoalog';
+import ConfirmationDialog from '../components/ConfirmationDialog';
+import StatusDialogUpdate from '../components/StatusDialogUpdate';
 
 const Report: React.FC = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedRow, setSelectedRow] = useState<any>(null);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const dataUser = JSON.parse(localStorage.users);
+
+  const [dialogOpenStatus, setDialogOpenStatus] = useState<boolean>(false);
+  const [selectedStatus, setSelectedStatus] = useState<string>('');
+  const [selectedReason, setSelectedReason] = useState<string>('');
+
+  const handleOpenDialog = () => {
+    setDialogOpenStatus(true); // Ubah untuk membuka dialog
+  };
+
+  const handleCloseDialog = () => {
+    setDialogOpenStatus(false); // Ubah untuk menutup dialog
+  };
+
+  const handleConfirm = async (status: string, reason: string) => {
+    // Lakukan proses penyimpanan status dan alasan
+    console.log('Status:', status);
+    console.log('Alasan:', reason);
+    if (!selectedRow) return;
+    try {
+      // Assuming you have a delete API function like `deleteDataReport`
+      const payload = {
+        id: selectedRow.id,
+        status,
+        rejection_reason: reason
+      };
+      console.log('payload', payload);
+      const result = await updateStatusReport(payload);
+      if (result.success) {
+        toast.success(`Status laporan menjadi telah di ${status}`, {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+        loadReports();  // Reload the reports to reflect the deletion
+      } else {
+        toast.error('Gagal menghapus laporan', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+      }
+      handleCloseDialog();
+      handleClose();
+    } catch (err) {
+      toast.error('Terjadi kesalahan', {
+        position: 'top-right',
+        autoClose: 3000,
+      });
+      handleCloseDialog();
+      handleClose();
+    }
+  };
 
   const handleClickOpen = (rowData: any) => {
     // setSelectedRow(rowData);
@@ -80,6 +134,7 @@ const Report: React.FC = () => {
       });
       loadReports();
     }
+    handleClose()
   }
   const handleSubmit = async () => {
     if (validateForm()) {
@@ -156,6 +211,51 @@ const Report: React.FC = () => {
     setErrors(validationErrors);
     return Object.keys(validationErrors).length === 0; // If no errors, return true
   };
+
+  const eksportPdf = async () => {
+    await eksportPDF();
+  }
+  const eksportExcel = async () => {
+    await eksportEXCEL();
+  }
+  const handleDelete = async () => {
+    if (!selectedRow) return;
+    if (selectedRow.status !== 'Pending') {
+      setOpenDeleteDialog(false)
+      return toast.error('Tidak dapat menghapus laporan', {
+        position: 'top-right',
+        autoClose: 3000,
+      });
+    }
+    try {
+      // Assuming you have a delete API function like `deleteDataReport`
+      const payload = { id: selectedRow.id };
+      console.log('payload', payload);
+      const result = await deleteDataReport(payload);
+      if (result.success) {
+        toast.success('Laporan berhasil dihapus', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+        loadReports();  // Reload the reports to reflect the deletion
+      } else {
+        toast.error('Gagal menghapus laporan', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+      }
+      setOpenDeleteDialog(false);
+      handleClose();
+    } catch (err) {
+      toast.error('Terjadi kesalahan', {
+        position: 'top-right',
+        autoClose: 3000,
+      });
+      setOpenDeleteDialog(false);
+      handleClose();
+    }
+  }
+
   const loadReports = async () => {
     try {
       const result = await fetchData(); // Assuming fetchData fetches your reports
@@ -171,6 +271,8 @@ const Report: React.FC = () => {
     loadReports();  // Initial load of reports
   }, []);
 
+
+
   return (
     <DashboardLayout>
       <h1 className="text-2xl font-semibold text-gray-600">Reports</h1>
@@ -179,7 +281,16 @@ const Report: React.FC = () => {
           variant="contained"
           color="success"
           startIcon={<DescriptionIcon />}
-          onClick={handleAdd}
+          onClick={eksportExcel}
+        >
+          Eksport Excel
+        </Button>
+
+        <Button
+          variant="contained"
+          color="success"
+          startIcon={<DescriptionIcon />}
+          onClick={eksportPdf}
         >
           Eksport PDF
         </Button>
@@ -235,26 +346,39 @@ const Report: React.FC = () => {
                     <IconButton onClick={(e) => handleClick(e, row)}>
                       <MoreVertIcon />
                     </IconButton>
-                    <Menu
-                      anchorEl={anchorEl}
-                      open={Boolean(anchorEl)}
-                      onClose={handleClose}
-                    >
-                      <MenuItem onClick={() => { handleClose(); }}>
-                        Lihat
-                      </MenuItem>
-                      <MenuItem
-                        onClick={() => {
-                          handleClickOpen(row)
-                        }}
+                    {selectedRow?.status === "Pending" && (
+                      <Menu
+                        anchorEl={anchorEl}
+                        open={Boolean(anchorEl)}
+                        onClose={handleClose}
                       >
-                        Edit
-                      </MenuItem>
 
-                      <MenuItem onClick={() => { handleClose(); }}>
-                        Hapus
-                      </MenuItem>
-                    </Menu>
+                        {selectedRow?.status === "Pending" && (
+                          <MenuItem
+                            onClick={() => {
+                              handleClickOpen(row)
+                            }}> Edit</MenuItem>
+                        )}
+
+
+                        {selectedRow?.status === "Pending" && (
+                          <MenuItem onClick={() => setOpenDeleteDialog(true)}>Hapus</MenuItem>
+                        )}
+                        {dataUser?.role === 1 && selectedRow?.status === "Pending" && (
+                          <MenuItem onClick={() => handleOpenDialog()}>Ubah Status</MenuItem>
+                        )}
+                        <StatusDialogUpdate
+                          open={dialogOpenStatus} // Gunakan dialogOpenStatus
+                          onConfirm={handleConfirm}
+                          onClose={handleCloseDialog}
+                        />
+                        <ConfirmationDialog
+                          open={openDeleteDialog}
+                          onConfirm={handleDelete}
+                          onClose={() => setOpenDeleteDialog(false)}
+                        />
+                      </Menu>
+                    )}
                   </TableCell>
                 </TableRow>
               ))
