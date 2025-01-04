@@ -13,25 +13,40 @@ const Login: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validasi input
     if (!name || !password) {
       setError('Please fill out all fields');
-      // router.push('/dashboard');
       return;
     }
-    const result = await login(name, password);
-    console.log('Logging in with', result);
-    if (result.success) {
-      localStorage.setItem('users', JSON.stringify(result.data.user))
-      if (result.data.user.role === 1) {
-        router.push('/dashboard');
-      }else if (result.data.user.role === 0){
-        router.push('/report');
-      }
-    }
-    // Assume login is successful (you would replace this with real logic)
-    setError('');
 
+    try {
+      // Proses login
+      const result = await login(name, password);
+      console.log('Logging in with', result);
+
+      if (result.success) {
+        // Simpan data pengguna ke localStorage
+        localStorage.setItem('users', JSON.stringify(result.data.user));
+
+        // Arahkan berdasarkan peran pengguna
+        if (result.data.user.role === 1) {
+          router.push('/dashboard');
+        } else if (result.data.user.role === 0) {
+          router.push('/report');
+        }
+      } else {
+        // Tampilkan pesan error jika login gagal
+        setError('Username atau Password salah');
+      }
+    } catch (error) {
+      // Tangani error dari proses login
+      console.error('Error during login:', error);
+
+      // Tampilkan pesan error kepada pengguna
+      setError('Username atau Password salah');
+    }
   };
+
 
   return (
     <div className=" flex items-center justify-center bg-gray-100 px-4">
