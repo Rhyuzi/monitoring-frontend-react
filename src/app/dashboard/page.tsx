@@ -87,7 +87,9 @@ const Dashboard: React.FC = () => {
         )) : 'Loading...'}
       </div>
 
-      <div className="mt-6">
+      <div
+        style={{ minWidth: '550px', width: '600px' }}
+        className="mt-6">
         {chartData ? (
           <Line data={chartData} />
         ) : (
