@@ -330,9 +330,10 @@ const Report: React.FC = () => {
                   <TableCell>{row.city}</TableCell>
                   <TableCell>
                     <div
+                    style={{ minWidth: '100px', width: '95px' }}
                       className={
                         row.status === 'Pending'
-                          ? 'bg-yellow-200 text-yellow-500 px-4 py-2 rounded-full'
+                          ? 'bg-yellow-200 text-yellow-500 px-4 py-2 rounded-full min-w-3'
                           : row.status === 'Approved'
                             ? 'bg-green-200 text-green-500 px-4 py-2 rounded-full'
                             : row.status === 'Rejected'
