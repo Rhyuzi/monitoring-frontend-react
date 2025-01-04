@@ -7,7 +7,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const pathname = usePathname();
   const router = useRouter();
   const [isLoaded, setIsLoaded] = useState(false);
-  const dataUser = JSON.parse(localStorage.users);
+  const dataUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('users') || '{}') : null;
   useEffect(() => {
     // Cek jika localStorage.users tidak ada, arahkan ke halaman login
     const user = localStorage.getItem('users');

@@ -15,7 +15,8 @@ const Report: React.FC = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedRow, setSelectedRow] = useState<any>(null);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
-  const dataUser = JSON.parse(localStorage.users);
+  const dataUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('users') || '{}') : null;
+
 
   const [dialogOpenStatus, setDialogOpenStatus] = useState<boolean>(false);
   const [selectedStatus, setSelectedStatus] = useState<string>('');
