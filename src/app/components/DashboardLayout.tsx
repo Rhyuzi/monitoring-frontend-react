@@ -18,7 +18,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             <a href="/report" >Reports</a>
           </li>
           <li className="mb-4">
-            <a href="#">Settings</a>
+            <a href="#">Logout</a>
           </li>
         </ul>
       </div>

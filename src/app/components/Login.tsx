@@ -2,25 +2,30 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { login } from '../api/api';
 
 const Login: React.FC = () => {
   const router = useRouter();
-  const [username, setUsername] = useState('');
+  const [name, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!username || !password) {
+    if (!name || !password) {
       setError('Please fill out all fields');
       // router.push('/dashboard');
       return;
     }
-    router.push('/dashboard');
+    const result = await login(name, password);
+    console.log('Logging in with', result);
+    if (result.success) {
+      localStorage.setItem('users', JSON.stringify(result.data.user))
+      router.push('/dashboard');
+    }
     // Assume login is successful (you would replace this with real logic)
     setError('');
-    console.log('Logging in with', { username, password });
 
   };
 
@@ -35,7 +40,7 @@ const Login: React.FC = () => {
             <input
               type="text"
               id="username"
-              value={username}
+              value={name}
               onChange={(e) => setUsername(e.target.value)}
               className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Enter your username"

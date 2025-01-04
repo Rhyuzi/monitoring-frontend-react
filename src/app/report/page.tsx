@@ -1,13 +1,32 @@
 'use client';
 import DashboardLayout from '../components/DashboardLayout';
 import React, { useEffect, useState } from 'react';
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Menu, IconButton, MenuItem, Button, Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, TextField, DialogActions } from '@mui/material';
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Menu, IconButton, MenuItem, Button, Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, TextField, DialogActions, FormHelperText } from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import AddIcon from '@mui/icons-material/Add';
-import { fetchData, addDataReport } from '../api/api';
+import DescriptionIcon from '@mui/icons-material/Description';
+import { fetchData, addDataReport, updateDataReport } from '../api/api';
 import { toast } from 'react-toastify';
+import EditDialog from '../components/EditDoalog';
 
 const Report: React.FC = () => {
+  const [openDialog, setOpenDialog] = useState(false);
+  const [selectedRow, setSelectedRow] = useState<any>(null);
+
+  const handleClickOpen = (rowData: any) => {
+    // setSelectedRow(rowData);
+    if (selectedRow.status !== 'Pending') {
+      return toast.error('Data tidak bisa di update', {
+        position: 'top-right',
+        autoClose: 3000,
+      });
+    }
+    setOpenDialog(true);
+  };
+  const handleCloseDialogEdit = () => {
+    setOpenDialog(false);
+    setSelectedRow(null);
+  };
   const [dataFetch, setDataFetch] = useState<object[]>([]);  // Set initial state to an empty array
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [loading, setLoading] = useState(true);
@@ -21,10 +40,11 @@ const Report: React.FC = () => {
   const [distributionDate, setDistributionDate] = useState('');
   const [attachment, setAttachment] = useState<File | null>(null);
   const [note, setNote] = useState('');
-  const handleClick = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
+  const [errors, setErrors] = useState<any>({});
+  const handleClick = (event: React.MouseEvent<HTMLElement>, row: any) => {
+    setAnchorEl(event.currentTarget);  // Set the anchor for the menu
+    setSelectedRow(row);  // Store the selected row
   };
-
   const handleClose = () => {
     setAnchorEl(null);
   };
@@ -36,7 +56,54 @@ const Report: React.FC = () => {
     console.log('Tambah data');
     // Implementasikan logika untuk menambahkan data, misalnya membuka modal
   };
+  const handleSubmitDialogEdit = async (updatedData: any) => {
+    const formData = new FormData();
+    formData.append('id', updatedData.id);
+    formData.append('program_name', updatedData.program);
+    formData.append('beneficiaries', updatedData.beneficiaries.toString()); // If it's a number, make sure to convert it to string
+    formData.append('province', updatedData.province);
+    formData.append('city', updatedData.district);
+    formData.append('district', updatedData.subdistrict);
+    formData.append('distribution_date', updatedData.distributionDate);
+    formData.append('additional_notes', updatedData.note);
+
+    if (updatedData.attachment) {
+      formData.append('proof_file', updatedData.attachment); // Assuming 'attachment' is a file
+    }
+    const result = await updateDataReport(formData);
+    console.log('payload', result);
+    if (result.success) {
+      handleCloseDialogEdit();
+      toast.success('Laporan berhasil diupdate', {
+        position: 'top-right',
+        autoClose: 3000,
+      });
+      loadReports();
+    }
+  }
   const handleSubmit = async () => {
+    if (validateForm()) {
+      const formData = new FormData();
+      formData.append('program_name', program);
+      formData.append('beneficiaries', beneficiaries.toString()); // If it's a number, make sure to convert it to string
+      formData.append('province', province);
+      formData.append('city', district);
+      formData.append('district', subdistrict);
+      formData.append('distribution_date', distributionDate);
+      formData.append('additional_notes', note);
+
+      if (attachment) {
+        formData.append('proof_file', attachment); // Assuming 'attachment' is a file
+      }
+      const result = await addDataReport(formData);
+      console.log('payload', result);
+      setOpen(false);
+      toast.success('Laporan berhasil ditambahkan!', {
+        position: 'top-right',
+        autoClose: 3000,
+      });
+      loadReports();
+    }
     // const payload = {
     //   program_name:  program,
     //   beneficiaries: beneficiaries,
@@ -47,32 +114,48 @@ const Report: React.FC = () => {
     //   proof_file: attachment,
     //   additional_notes: note,
     // }
-    const formData = new FormData();
-    formData.append('program_name', program);
-    formData.append('beneficiaries', beneficiaries.toString()); // If it's a number, make sure to convert it to string
-    formData.append('province', province);
-    formData.append('city', district);
-    formData.append('district', subdistrict);
-    formData.append('distribution_date', distributionDate);
-    formData.append('additional_notes', note);
-    if (attachment) {
-      formData.append('proof_file', attachment); // Assuming 'attachment' is a file
-    }
-    const result = await addDataReport(formData);
-    console.log('payload', result);
-    setOpen(false);
-    toast.success('Laporan berhasil ditambahkan!', {
-      position: 'top-right',
-      autoClose: 3000,
-    });
-    loadReports();
-  };
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files) {
-      setAttachment(event.target.files[0]);
-    }
-  };
 
+  };
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files ? e.target.files[0] : null;
+    if (file) {
+      // Check file size and type
+      if (file.size > 2 * 1024 * 1024) { // 2MB limit
+        setErrors((prevErrors: any) => ({
+          ...prevErrors,
+          proofFile: 'File size must be less than 2MB',
+        }));
+      } else if (!['image/jpeg', 'image/png', 'application/pdf'].includes(file.type)) {
+        setErrors((prevErrors: any) => ({
+          ...prevErrors,
+          proofFile: 'Only JPG, PNG, or PDF files are allowed',
+        }));
+      } else {
+        setErrors((prevErrors: any) => ({ ...prevErrors, proofFile: '' }));
+        setAttachment(file);
+      }
+    }
+  };
+  const validateForm = () => {
+    const validationErrors: any = {};
+
+    // Validate required fields
+    if (!program) validationErrors.program = 'Nama Program is required';
+    if (!beneficiaries) validationErrors.beneficiaries = 'Jumlah Penerima Bantuan is required';
+    if (!province) validationErrors.province = 'Provinsi is required';
+    if (!district) validationErrors.district = 'Kabupaten is required';
+    if (!subdistrict) validationErrors.subdistrict = 'Kecamatan is required';
+    if (!distributionDate) validationErrors.distributionDate = 'Tanggal Penyaluran is required';
+    if (!attachment) validationErrors.proofFile = 'Bukti Penyaluran is required';
+
+    // Check for file errors (already handled in file change handler)
+    if (!attachment && errors.proofFile) {
+      validationErrors.proofFile = errors.proofFile;
+    }
+
+    setErrors(validationErrors);
+    return Object.keys(validationErrors).length === 0; // If no errors, return true
+  };
   const loadReports = async () => {
     try {
       const result = await fetchData(); // Assuming fetchData fetches your reports
@@ -91,8 +174,15 @@ const Report: React.FC = () => {
   return (
     <DashboardLayout>
       <h1 className="text-2xl font-semibold text-gray-600">Reports</h1>
-
-      <div className="flex justify-end mb-4">
+      <div className="flex justify-end mb-4 space-x-4">
+        <Button
+          variant="contained"
+          color="success"
+          startIcon={<DescriptionIcon />}
+          onClick={handleAdd}
+        >
+          Eksport PDF
+        </Button>
         <Button
           variant="contained"
           color="primary"
@@ -142,7 +232,7 @@ const Report: React.FC = () => {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <IconButton onClick={handleClick}>
+                    <IconButton onClick={(e) => handleClick(e, row)}>
                       <MoreVertIcon />
                     </IconButton>
                     <Menu
@@ -150,10 +240,18 @@ const Report: React.FC = () => {
                       open={Boolean(anchorEl)}
                       onClose={handleClose}
                     >
-                      <MenuItem onClick={() => { handleClose(); /* Handle "Lihat" action */ }}>
+                      <MenuItem onClick={() => { handleClose(); }}>
                         Lihat
                       </MenuItem>
-                      <MenuItem onClick={() => { handleClose(); /* Handle "Hapus" action */ }}>
+                      <MenuItem
+                        onClick={() => {
+                          handleClickOpen(row)
+                        }}
+                      >
+                        Edit
+                      </MenuItem>
+
+                      <MenuItem onClick={() => { handleClose(); }}>
                         Hapus
                       </MenuItem>
                     </Menu>
@@ -169,7 +267,7 @@ const Report: React.FC = () => {
         <DialogTitle>Tambah Laporan</DialogTitle>
         <DialogContent>
           {/* Nama Program */}
-          <FormControl fullWidth margin="normal">
+          <FormControl fullWidth margin="normal" error={!!errors.program}>
             <InputLabel>Nama Program</InputLabel>
             <Select
               value={program}
@@ -179,8 +277,8 @@ const Report: React.FC = () => {
               <MenuItem value="PKH">PKH</MenuItem>
               <MenuItem value="BLT">BLT</MenuItem>
               <MenuItem value="Bansos">Bansos</MenuItem>
-              {/* Tambahkan pilihan lain sesuai kebutuhan */}
             </Select>
+            {errors.program && <FormHelperText>{errors.program}</FormHelperText>}
           </FormControl>
 
           {/* Jumlah Penerima Bantuan */}
@@ -192,10 +290,12 @@ const Report: React.FC = () => {
             onChange={(e) => setBeneficiaries(e.target.value)}
             margin="normal"
             required
+            error={!!errors.beneficiaries}
+            helperText={errors.beneficiaries}
           />
 
           {/* Wilayah (Provinsi, Kabupaten, Kecamatan) */}
-          <FormControl fullWidth margin="normal">
+          <FormControl fullWidth margin="normal" error={!!errors.province}>
             <InputLabel>Provinsi</InputLabel>
             <Select
               value={province}
@@ -204,10 +304,10 @@ const Report: React.FC = () => {
             >
               <MenuItem value="Jakarta">Jakarta</MenuItem>
               <MenuItem value="Bali">Bali</MenuItem>
-              {/* Tambahkan pilihan provinsi lain */}
             </Select>
+            {errors.province && <FormHelperText>{errors.province}</FormHelperText>}
           </FormControl>
-          <FormControl fullWidth margin="normal">
+          <FormControl fullWidth margin="normal" error={!!errors.district}>
             <InputLabel>Kabupaten</InputLabel>
             <Select
               value={district}
@@ -216,10 +316,10 @@ const Report: React.FC = () => {
             >
               <MenuItem value="Jakarta Pusat">Jakarta Pusat</MenuItem>
               <MenuItem value="Badung">Badung</MenuItem>
-              {/* Pilihan Kabupaten sesuai Provinsi */}
             </Select>
+            {errors.district && <FormHelperText>{errors.district}</FormHelperText>}
           </FormControl>
-          <FormControl fullWidth margin="normal">
+          <FormControl fullWidth margin="normal" error={!!errors.subdistrict}>
             <InputLabel>Kecamatan</InputLabel>
             <Select
               value={subdistrict}
@@ -228,8 +328,8 @@ const Report: React.FC = () => {
             >
               <MenuItem value="Menteng">Menteng</MenuItem>
               <MenuItem value="Ubud">Ubud</MenuItem>
-              {/* Pilihan Kecamatan sesuai Kabupaten */}
             </Select>
+            {errors.subdistrict && <FormHelperText>{errors.subdistrict}</FormHelperText>}
           </FormControl>
 
           {/* Tanggal Penyaluran */}
@@ -241,6 +341,8 @@ const Report: React.FC = () => {
             onChange={(e) => setDistributionDate(e.target.value)}
             margin="normal"
             required
+            error={!!errors.distributionDate}
+            helperText={errors.distributionDate}
             InputLabelProps={{
               shrink: true,
             }}
@@ -253,6 +355,8 @@ const Report: React.FC = () => {
             type="file"
             onChange={handleFileChange}
             margin="normal"
+            error={!!errors.proofFile}
+            helperText={errors.proofFile}
           />
 
           {/* Catatan Tambahan */}
@@ -275,12 +379,14 @@ const Report: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+      <EditDialog
+        open={openDialog}
+        handleClose={handleCloseDialogEdit}
+        handleSubmit={handleSubmitDialogEdit}
+        rowData={selectedRow}
+      />
     </DashboardLayout>
   );
 };
 
 export default Report;
-function loadReports() {
-  throw new Error('Function not implemented.');
-}
-
